@@ -116,5 +116,31 @@ router.put("/approve/:id", auth, async (req, res) => {
   }
 });
 
+// Reject a tenant (landlord only)
+router.delete("/reject/:id", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "landlord") {
+      return res.status(403).json({ message: "Only landlord can reject tenants" });
+    }
+
+    const tenant = await User.findById(req.params.id);
+
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    if (tenant.role !== "tenant") {
+      return res.status(400).json({ message: "Can only reject tenant accounts" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "Tenant rejected and removed successfully" });
+  } catch (err) {
+    console.error("Reject tenant error:", err);
+    res.status(500).json({ message: "Server error while rejecting tenant" });
+  }
+});
+
+
 module.exports = router;
 
