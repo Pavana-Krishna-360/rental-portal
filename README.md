@@ -8,7 +8,7 @@ The goal of this project is to create a simple, role-based system that helps str
 ---
 
 ## Live Links
-- Frontend (Netlify): https://quiet-kitsune-6cb57a.netlify.app  
+- Frontend (Netlify): sparkling-arithmetic-a8c6b4.netlify.app
 - Backend (Render): https://rental-portal-backend-98q1.onrender.com  
 
 ---
