@@ -5,31 +5,38 @@ const cors = require("cors");
 
 const app = express();
 
-// middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ Auth Route
+// Routes
 const authRoutes = require("./routes/auth");
-app.use("/api/auth", authRoutes);
 const complaintRoutes = require("./routes/complaints");
+
+app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
 
-// default route
+// Default route
 app.get("/", (req, res) => {
   res.send("Rental Portal API Running ✅");
 });
 
-// connect DB & start server
+// Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("✅ MongoDB Connected");
-  app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ DB Connection Error:", err.message);
+    process.exit(1);
   });
 
-  })
-  .catch((err) => console.log("❌ DB Connection Error: ", err));
