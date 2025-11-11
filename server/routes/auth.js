@@ -3,8 +3,9 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const auth = require("../middleware/auth"); // ✅ Added import
 
-// REGISTER
+// REGISTER (Admin or Landlord manual creation, optional)
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -28,6 +29,33 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// Tenant Signup
+router.post("/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role: "tenant",
+      isApproved: false, // landlord approval pending
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "Signup successful. Awaiting landlord approval." });
+  } catch (err) {
+    res.status(500).json({ message: "Server error during signup" });
+  }
+});
+
 // LOGIN
 router.post("/login", async (req, res) => {
   try {
@@ -38,6 +66,11 @@ router.post("/login", async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
+
+    // 🚫 Block unapproved tenants
+    if (user.role === "tenant" && !user.isApproved) {
+      return res.status(403).json({ message: "Account not yet approved by landlord." });
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role, email: user.email },
@@ -51,4 +84,37 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ✅ Get all unapproved tenants (landlord only)
+router.get("/unapproved", auth, async (req, res) => {
+  if (req.user.role !== "landlord") {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  const unapproved = await User.find({ role: "tenant", isApproved: false });
+  res.json(unapproved);
+});
+
+// ✅ Approve a tenant (landlord only)
+router.put("/approve/:id", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "landlord") {
+      return res.status(403).json({ message: "Only landlord can approve tenants" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { isApproved: true },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    res.json({ message: "Tenant approved successfully", user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
+
